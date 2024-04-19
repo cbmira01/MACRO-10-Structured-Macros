@@ -1,0 +1,854 @@
+;
+;  STRUC2 -- A SET OF STRUCTURED PROGRAMMING MACROS FOR THE DECSYSTEM-10 ASSEMBLER.
+;
+;           by C. Miracle, Louisville KY, June 2010
+;                   cbmira01@louisville.edu
+;  
+;  This implementation was inspired by the original STRUCT code written  
+;      by ROBERT P. NIX  --  11/21/78. His original code can be found at 
+;      http://pdp-10.trailing-edge.com/decuslib10-08/index.html in the 
+;      DECUS-10 library dcus:[43,50500]. Thanks, Robert, wherever you are!
+;
+
+    UNIVERSAL  STRUC2 
+
+        COMMENT     |
+
+                STRUC2 STRUCTURED PROGRAMMING MACRO CALLS
+        %STRUC 
+            
+            Use %STRUC before any use of structured programming macro calls. 
+            %STRUC prepares the macro assembly workspace, and also supplies
+            code for conditional expression evaluation.
+
+
+        %IF (condition)
+          -- CODE --
+        %ELSE
+          -- CODE --
+        %ENDIF
+
+
+        %IF (condition) 
+          -- CODE --
+        %ENDIF
+
+
+        %WHILE (condition)
+          -- CODE --
+        %ENDWHILE
+
+            This loop repeats while (condition) is true. Set condition (TRUE)
+            for an infinite loop. Any number of BREAKs and CONTINUEs can be 
+            used inside the loop.
+
+
+        %REPEAT
+          -- CODE --
+        %UNTIL (condition)
+
+            This loop repeats until (condition) is true. Set condition (FALSE) 
+            for an infinite loop. Any number of BREAKs and CONTINUEs can be 
+            used inside the loop.
+
+       %FOR loop_variable,start,(condition),increment
+           -- CODE --
+       %ENDFOR
+
+            The loop variable must be supplied in user code; it is not defined
+            by the loop structure, nor protected by it. Any number of BREAKs 
+            and CONTINUEs can be used inside the loop.
+
+            The start and increment values are actually memory locations, but 
+            can be made to appear as literal values by use of the assembler 
+            literal brackets []. For example, a FOR loop to count from 0 to 100 
+            by 10 can be set up as: 
+                LOOPV:  BLOCK 1
+                    -- intervening code --
+                %FOR LOOPV,[0],(LOOPV,LE,[100]),[10]
+                        -- loop code --
+                %ENDFOR
+
+            A nested loop to initialize each cell of a 100x100 array with the 
+            product of its indices can be implemented as:
+                PROD=1
+                INDEX=2
+                I:      BLOCK 1
+                J:      BLOCK 1
+                BASE:   BLOCK 100
+                    -- intervening code --
+                %FOR I,[0],(I,LE,[9]),[1]
+                    %FOR J,[0],(J,LE,[9]),[1]
+                        move    PROD, I
+                        imul    PROD, J
+                        move    INDEX,I
+                        imul    INDEX,[10]
+                        add     INDEX,J
+                        movem   PROD,BASE(INDEX)
+                    %ENDFOR  ; end J
+                %ENDFOR   ; end I
+
+        %CASE
+           %WHEN (condition) 
+                -- CODE --
+           %WHEN (condition) 
+                -- CODE --
+           %DEFAULT
+                -- CODE --
+        %ENDCASE
+
+            When a WHEN case evaluates true, its case code is executed, then 
+            a branch is taken to the end of the structure; code execution does 
+            not "fall through" to the following WHEN. Only code in the first 
+            matching WHEN case is executed. Any number of WHEN cases can be 
+            defined. The DEFAULT case is optional; but if defined, may only be
+            defined once, must follow a WHEN, and must be the final case in the 
+            CASE-ENDCASE structure. DEFAULT case will execute if no other WHEN 
+            cases match. 
+
+
+        %BREAK (condition)
+        %CONTINUE (condition)
+
+            BREAK and CONTINUE are legal only in the scope of WHILE, REPEAT or
+            FOR loops. On condition resolved true, BREAK branches to the exit
+            point of the loop; CONTINUE branches to the loopback point of the
+            loop. BREAK and CONTINUE are optional, and can be used multiple 
+            times in the scope of a loop structure.
+
+
+                EVALUATION OF CONDITIONAL EXPRESSIONS
+    (condition) is defined as   (TRUE)                            or
+                                (FALSE)                           or
+                                (A,compareOp,B)                   or
+                                ((condition1),logicalOp,(condition2)) or 
+                                (NOT,(condition))
+
+    compareOp is one of:  EQ  or  NE  or  GT  or  LT  or  GE  or LE.
+
+    logicalOP is one of: AND, OR, XOR, EQV (equivalence), or IMPL (material
+    implication).
+
+            c1  c2  AND         c1  c2  OR         c1  c2  XOR
+             T   T   T           T   T   T          T   T   F 
+             T   F   F           T   F   T          T   F   T 
+             F   T   F           F   T   T          F   T   T 
+             F   F   F           F   F   F          F   F   F   
+
+            c1  c2  EQV         c1  c2  IMPL        c  NOT
+             T   T   T           T   T   T          T   F 
+             T   F   F           T   F   F          F   T 
+             F   T   F           F   T   T           
+             F   F   T           F   F   T        
+
+
+    A and B are general memory locations as defined in user code, or literal
+    references (such as [9] or [102]). 
+                    |       ; end of comment
+
+        LALL
+
+    ; Set a stack location to a given value. Base will be 
+    ;   '.s' for the STRUC2 application.
+    DEFINE  %SKSET (BASE, LEVEL, VALUE) <
+        BASE'LEVEL=VALUE
+    >
+
+    ; Purge an abandoned symbol, or just mark it abandoned 
+    ;   for debugging purposes.
+    DEFINE  %SKPUR (BASE, LEVEL) <
+        PURGE BASE'LEVEL
+        IFE <.ftpur-.false>,<
+            BASE'LEVEL=.purge
+        >
+    >
+
+    ; Return a given stack location into the variable '.stacv'.
+    DEFINE  %STACV (BASE, LEVEL) <
+        .stacv=BASE'LEVEL
+    >
+
+    ; Push a given value onto the structure stack. A push onto a 
+    ;   stack at its limit causes the assembly to stop.
+    DEFINE  %PUSH (VALUE) <
+        IFG <.sPtr-.sLim>,<
+            PRINTX FATAL: the structure stack is full.
+            END ; end assembly on fatal error
+        >
+        .sPtr=.sPtr+1
+        %SKSET (.s,\.sPtr,VALUE)
+    >
+
+    ; Pop the structure stack: return the top-of-stack value into '.stacv' 
+    ;   and purge/abandon the location. A pop on an empty stack causes the 
+    ;   assembly to stop.
+    DEFINE  %POP <
+        IFL <.sPtr>,<
+            PRINTX FATAL: the structure stack is empty.
+            END ; end assembly on fatal error
+        >
+        %STACV (.s,\.sPtr)
+        %SKPUR (.s,\.sPtr)
+        .sPtr=.sPtr-1
+    >
+    
+    ; Test the item at the top of the structure stack for one of the 
+    ;   values given in LIST. If the item does not match one of the 
+    ;   given values, then stop the assembly.
+    DEFINE  %MUST (LIST) <
+        %POP
+        IRP LIST,<
+            IFN <.stacv-LIST>,<
+                PRINTX FATAL: unexpected structure closure.
+                END ; end assembly on fatal error
+            >
+        >
+    >
+
+    ; Resolve a jump forward to a following structure part. For insight into 
+    ;   how this macro works, refer to DECsystem-10 Macro Assembler Reference 
+    ;   Manual (AA-C780C-TB April 1978), page 3-46.
+    DEFINE  %RFORW <
+        .here=.                     ; Record the present location in the assembly.
+        %POP                        ; Recover the source location of the jump.
+        .ORG .stacv                 ; Set assembly pointer back to source location.
+        jrst .here                  ; Insert a jump to the proper location.
+        .ORG                        ; Resume the original line of assembly.
+    >
+
+    ; Resolve a number of jumps forward to a following structure part. The number
+    ;   of jumps to resolve is at the top of stack.
+    DEFINE  %RFORX <
+        %POP
+        REPEAT <.stacv>,<
+            %RFORW
+        >
+    >
+
+    ; Resolve a jump back to an earlier structure part, such as a loopback
+    ;   address in WHILE, REPEAT, or FOR. 
+    DEFINE %RBACK <
+        %POP                        ; Recover the destination of the jump.
+        jrst .stacv                 ; Insert a jump to the destination.
+    >
+
+    ; Fully parse a conditional expression into an RPN symbol string.
+    DEFINE %PARSE (T1, T2, T3) <
+        IFIDN <T2><AND>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opand
+        >
+        IFIDN <T2><OR>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opor
+        >
+        IFIDN <T1><NOT>,<
+            exp 0                   ; Dummy argument to enforce 2-arity of the RPN scheme.
+            %PARSE T2
+            exp .opnot
+        >
+        IFIDN <T2><XOR>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opxor
+        >
+        IFIDN <T2><EQV>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opeqv
+        >
+        IFIDN <T2><IMPL>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opimp
+        >
+        IFIDN <T2><EQ>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opeq
+        >
+        IFIDN <T2><NE>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opne
+        >
+        IFIDN <T2><GT>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opgt
+        >
+        IFIDN <T2><LT>,<
+            %PARSE T1
+            %PARSE T3
+            exp .oplt
+        >
+        IFIDN <T2><GE>,<
+            %PARSE T1
+            %PARSE T3
+            exp .opge
+        >
+        IFIDN <T2><LE>,<
+            %PARSE T1
+            %PARSE T3
+            exp .ople
+        >
+        IFIDN <T1>(TRUE),<
+            exp .true
+        >
+        IFIDN <T1><FALSE>,<
+            exp .false
+        >
+    >
+
+    ; Fully assemble the conditional logic code of a programming structure,
+    ;   and submit the expression RPN string to the RPN engine.
+    DEFINE %LOGIC (COND, T, F, %rstng)<
+            ; Set up for a branch to the RPN engine.
+                    movem   1, SAVE1
+                    movei   1, T        ; Supply TRUE return point.
+                    move    1, L.TRUE  
+                    movei   1, F        ; Supply FALSE return point.
+                    move    1, L.FALS
+                    movei   1, %rstng-1 ; Supply beginning of RPN string.
+                    jrst    rpnevl 
+
+            ; Build the RPN string and terminator from the conditional expression.
+        %rstng:     %PARSE  COND              
+                    exp     .endco,,0
+    >
+
+    ; Use before any user calls on structured macros, to initialize workspace 
+    ;   variables, manifest constants, and feature test symbols, and to provide
+    ;   code to evaluate conditional expressions.
+    DEFINE  %STRUCT <
+            ; Jump around the code body of this macro.
+                    jrst    MACEXI
+
+            ; Manifest constants.
+        .true=1
+        .false=0
+        .purge=-1                   ; Marks an abandoned stack entry (if not purged).
+
+            ; Name symbols for use in the structure stack.
+        .if=1                       ; IF
+        .else=2                     ; ELSE
+        .while=3                    ; WHILE
+        .repea=4                    ; REPEAT
+        .for=5                      ; FOR
+        .case=6                     ; CASE
+        .when=7                     ; WHEN
+        .defal=10                   ; DEFAULT
+
+            ; Workspace variables.
+        .stacv=0                    ; A structure stack value, usually top of stack.
+        .lpbak=0                    ; A structure loopback destination requiring resolution.
+        .here=0                     ; A current value of the assembler location counter.
+
+            ; Temporary save areas during stack edits.
+        .temp1=0 
+        .temp2=0
+        .temp3=0
+
+            ; Structure stack pointer and limit.
+        .sPtr=-1                    ; Symbol .s0 will be the first used location in the stack.
+        .sLim=7777                  ;   0-7777 octal allows for 4096 symbols.
+ 
+            ; The following bit prefix markers are used to help the RPN engine 
+            ;   during evaluation of conditional expressions. 
+        .endco=100000               ; Indicates 'end of input' in the RPN string.
+        .opera=200000               ; Indicates 'an operator'.
+
+            ; Logical operators.
+        .opand=.opera,,1
+        .opor= .opera,,2
+        .opnot=.opera,,3
+        .opxor=.opera,,4
+        .opeqv=.opera,,5
+        .opimp=.opera,,6
+
+            ; Compare operators.
+        .opeq=.opera,,10
+        .opne=.opera,,11
+        .opgt=.opera,,12
+        .oplt=.opera,,13
+        .opge=.opera,,14
+        .ople=.opera,,15
+
+            ; Feature test/debug symbols.
+        .ftpur=.false               ; Set to .true to purge abandoned structure stack symbols (normal operation).
+                                    ; Set to .false to retain abandoned structure stack symbols (debug).
+
+        .ftfrc=0                    ; Set to  0 for normal evaluation of conditional expressions.
+                                    ; Set to -1 to force all conditional expressions evaluations to FALSE.
+                                    ; Set to  1 to force all conditional expression evaluations to TRUE.
+        
+        .ftrpn=.true                ; Set to .true for adequate RPN stack size (normal operation).
+                                    ; Set to .false to force RPN stack to small size (debug).
+
+            ; Here is the RPN evaluator for conditional expressions. The heart of 
+            ;   the evaluator, the "Postfix Algorithm", is straight out of Wikipedia:
+            ;   http://en.wikipedia.org/wiki/Reverse_Polish_Notation#Postfix_algorithm .
+            ;   On entry, the TRUE and FALSE link addresses will have been initialized, 
+            ;   and register 1 set to just before the RPN string. On exit, prior 
+            ;   register values will be restored, and an indirect branch taken to the 
+            ;   proper result link. Error conditions detected are 'operator does not 
+            ;   exist', 'too many values left on the RPN stack', and 'not enough values 
+            ;   on the RPN stack'. All runtime errors will report to the TTY and cause
+            ;   the job to halt.
+        SAVE1:      block   1
+        SAVE2:      block   1
+        SAVE3:      block   1
+        SAVE4:      block   1
+        SAVE17:     block   1
+        L.TRUE:     block   1       ; Indirect link back to structure TRUE code.
+        L.FALS:     block   1       ; Indirect link back to structure FALSE code.
+        RPSLEN=^D100
+        IFE <.ftrpn-.true>,<
+            RPSLEN=^D5
+        >
+            ; Set up the RPN engine runtime stack.
+        RPSTAK:     block   RPSLEN
+        RPNEVL:     movem   17, SAVE17
+                    move    17, [IOWD RPSLEN,RPSTAK]
+                    
+            ; While there are tokens left in the RPN symbol string...
+        RPLOOP:     addi    1, 1
+                    move    2, 1
+                    camn    2, [.endco,,0]
+                      jrst RPNEND
+
+            ; ...consider this token from input. If the token is not an operator...
+                    hlrzm   2, 3    
+                    camn    3, [.opera]
+                      jrst  AN.OP
+
+            ; ...it's a value; push it onto the stack and consider the next token.
+        A.VALU:     push    17, 2
+                    jrst    RPLOOP
+
+            ; Otherwise, the token is an operator.
+        AN.OP:
+            ; It is known a priori that this RPN engine takes 2 arguments.
+            ;   If there are fewer than 2 values on the stack, then error...
+                    hlrem   17, 3
+                    camge   3, [-RPSLEN+2]                    
+                      jrst  ERRART
+
+            ; ... else pop the top 2 values from the stack. 
+                    pop     17, 4   ; Right-hand value..
+                    pop     17, 3   ; Left-hand value..
+            ; Keep in mind, at this point, that register 3 contains the 
+            ;   left-hand value, and register 4 contains the right-hand 
+            ;   value from the original conditional expression. So the 
+            ;   sequence of evaluation is 'register_3 OPERATOR register_4'. 
+            ;   For NOT, perform the operation on register 4, since register 3
+            ;   will contain an arity-dummy value.
+
+            ; Evaluate the operator, with the values as arguments. Logical result
+            ;   ends up in register 2. 
+                    came    2, [.opand]
+                      jrst  NEXT1
+                    move    2, 3
+                    and     2, 4
+                    jrst    RESULT
+
+        NEXT1:      came    2, [.opor]
+                      jrst  NEXT2
+                    move    2, 3
+                    ior     2, 4
+                    jrst    RESULT
+
+        NEXT2:      came    2, [.opnot]
+                      jrst  NEXT3
+                    setcm    2, 4                    
+                    jrst    RESULT
+
+        NEXT3:      came    2, [.opxor]
+                      jrst  NEXT4
+                    move    2, 3
+                    xor     2, 4
+                    jrst    RESULT
+
+        NEXT4:      came    2, [.opeqv]
+                      jrst  NEXT5
+                    move    2, 3
+                    eqv     2, 4
+                    jrst    RESULT
+
+        NEXT5:      came    2, [.opimp]
+                      jrst  NEXT6  
+                    move    2, 3
+                    orcm    2, 4
+                    jrst    RESULT      
+
+        NEXT6:      came    2, [.opeq]
+                      jrst  NEXT7
+                    move    2, .true
+                    came    3, 4
+                      move    2, .false
+                    jrst    RESULT
+
+        NEXT7:      came    2, [.opne]
+                      jrst  NEXT8
+                    move    2, .true
+                    camn    3, 4
+                      move    2, .false
+                    jrst    RESULT
+
+        NEXT8:      came    2, [.opgt]
+                      jrst  NEXT9
+                    move    2, .true
+                    camg    3, 4
+                      move    2, .false
+                    jrst    RESULT
+
+        NEXT9:      came    2, [.oplt]
+                      jrst  NEXT10
+                    move    2, .true
+                    caml    3, 4
+                      move    2, .false
+                    jrst    RESULT
+
+        NEXT10:     came    2, [.opge]
+                      jrst  NEXT11
+                    move    2, .true
+                    camge   3, 4
+                      move    2, .false
+                    jrst    RESULT
+
+        NEXT11:     came    2, [.ople]
+                      jrst  ERRONK  ; Operator does not exist.
+                    move    2, .true
+                    camle   3, 4
+                      move    2, .false
+                    ; jrst    RESULT
+
+            ; Push the returned result back onto the stack and continue processing.
+        RESULT:     push    17, 2
+                    jrst    RPLOOP
+
+        RPNEND:
+            ; If there is only one value in the stack...
+                    hlrzm   17, 3
+                    came    3, [-RPSLEN+1]
+                      jrst ERRTMV
+
+            ; ...that value is the result of the calculation.
+                    pop     17, 2
+        IFL <.ftfrc>,<
+                    move    2, [.false]
+        >
+        IFG <.ftfrc>,<
+                    move    2, [.true]
+        >
+
+            ; Restore user workspace and return to user code.
+                    move    1, SAVE1
+                    move    3, SAVE3
+                    move    4, SAVE4
+                    move    17, SAVE17
+                    came    2, [.true]
+                      jrst  RF
+                    move    2, SAVE2
+                    jrst    @L.TRUE
+            RF:     move    2, SAVE2
+                    jrst    @L.FALS
+
+            ; Handle all errors here.
+        ERRONK:     outstr  [asciz /STRUC2 error: Unknown logical or compare operator./]
+                    jrst    ERREXI
+        ERRTMV:     outstr  [asciz /STRUC2 error: Too many values on the RPN stack./]
+                    jrst    ERREXI
+        ERRART:     outstr  [asciz /STRUC2 error: Not enough values on the RPN stack./]
+                    ; jrst    ERREXI
+        ERREXI:     reset
+                    exit
+
+            ; Branch to here makes this code body invisible in-line..
+        MCREXI:
+    >
+
+    DEFINE  %IF (UCOND, %T, %F) <
+        %LOGIC (UCOND %T, %F)       ; Dump the conditional logic here.
+      %F:                           ; 'IF false' jump must be resolved later.
+      %T:                           ; 'IF true' code follows this label.
+        %PUSH %F                    ; Unresolved jump to ELSE or structure exit.
+        %PUSH .if                   ; Open an IF activation frame.
+    >
+
+    DEFINE  %ELSE (%ELS, %END) <
+        %MUST <.ifNam>              ; Expect to be in an IF.
+      %END:                         ; Jump to ENDIF.
+      %ELS:                         ; 'ELSE code' follows this label.
+        %RFORW                      ; Forward resolve 'IF false' jump to %ELS.
+        %PUSH %END                  ; Unresolved jump to structure exit.
+        %PUSH .else                 ; Open an ELSE activation frame.
+            ; The IF activation frame has been consumed at this point.
+    >
+
+    DEFINE  %ENDIF (%END) <
+        %MUST <.if, .else>          ; Expect to be in either IF or ELSE.
+      %END:                         ; Structure exit point.
+        %RFORW                      ; Resolve structure exit jumps from 'IF false' or 'ELSE %END'.
+            ; The IF or ELSE activation frame has been consumed at this point.
+    >
+
+    DEFINE  %WHILE (UCOND, %T, %F) <
+        .lpbak= .                   ; Note the WHILE loopback location.
+        %LOGIC (UCOND %T, %F)       ; Dump the conditional logic here.
+      %F:                           ; 'False' jump must be resolved later.
+      %T:                           ; 'WHILE true' code follows this label.
+        %PUSH %F                    ; Unresolved jump to structure exit.
+        %PUSH 1                     ; Only one structure exit jump to resolve for now.
+        %PUSH .lpbak                ; Unresolved destination to loopback address.
+        %PUSH .while                ; Open a WHILE activation frame.
+    >
+
+    DEFINE  %ENDWHILE (%BACK, %END) <
+        %MUST <.while>              ; Expect to be in a WHILE.
+      %BACK:                        ; Loop back to beginning of WHILE
+        %RBACK                      ; Resolve %BACK to loopback address.
+      %END:                         ; Structure exit point.
+        %RFORX                      ; Resolve all structure exit jumps (including BREAKs).
+            ; The WHILE activation frame has been consumed at this point.
+    >
+
+    DEFINE  %REPEAT <
+        .lpbak= .
+        %PUSH 0                     ; No structure exit jumps to resolve (for now).
+        %PUSH .lpbak
+        %PUSH .repea
+    >
+
+    DEFINE  %UNTIL      (UCOND, %T, %F) <
+        %MUST <.repea> 
+        %LOGIC (UCOND, %T, %F)
+      %F:
+        %RBACK
+      %T:
+        %RFORX
+    >   
+
+    DEFINE  %FOR        (LOOPV, START, UCOND, INCR, %T, %F) <
+            ; Operations to set LOOPV = start
+                    movem   1, SAVE1
+                    move    1, START
+                    movem   1, LOOPV
+                    move    1, %SAVE
+                    jrst    ONETME          ; One-time jump into structure body.
+
+        .lpbak= .
+            ; Operations to set LOOPV = LOOPV + incr
+                    movem   1, SAVE1
+                    move    1, INCR
+                    addm    1, LOOPV
+                    move    1, SAVE1
+        %LOGIC (UCOND, %T, %F)
+      %F:
+      %T:
+      ONETME:
+        %PUSH %F
+        %PUSH 1 
+        %PUSH .lpbak
+        %PUSH .for
+    >
+
+    DEFINE  %ENDFOR     (%BACK, %END) <
+        %MUST <.for> 
+      %BACK:
+        %RBACK
+      %END:
+        %RFORX
+    > 
+
+    DEFINE  %CASE <
+        %PUSH 0                     ; No more structure exit jumps to resolve.
+        %PUSH .case1                ; Open a virgin CASE activation frame.
+    >
+
+    DEFINE  %WHEN       (UCOND, %T, %F, %ENTRY, %END) <
+        %MUST <.case1, .case2> 
+            ; Frame type .case1 has never seen a WHEN clause before now. The chain
+            ;   of WHEN clauses begins here with a special WHEN which does not
+            ;   have to guard a previous WHEN's branch to structure end point.
+        IFE <.stacv-.case1>,<
+            %LOGIC (UCOND, %T, %F)
+          %F:                       ; 'False' continues to the next WHEN clause.
+          %T:                       ; 'True' runs the code body in this WHEN.
+        >
+            ; Frame type .case2 knows that the chain of WHEN clauses should continue,
+            ;   and provide a jump to structure end for the previous WHEN.
+        IFE <.stacv-.case2>,<
+          %END:                     ; Allows the preceding WHEN to branch to structure end.
+          %ENTRY:                   ; Flow from 'false' brach in previous WHEN.
+            %RFORW
+            %LOGIC (UCOND, %T, %F)
+          %F:                       ; 'False' continues to the next WHEN.
+          %T:                       ; 'True' runs the code body in this WHEN.
+            %PUSH %END              ; Stack another structure exit jump to resolve.
+        >
+        %PUSH %F                    ; Stack a link to next WHEN's logic entry point.
+        %PUSH .case2                ; The WHEN chain continues.
+    >
+
+    DEFINE  %DEFAULT    (%ENTRY, %END) <
+            ; DEFAULT is just a WHEN without a logic block. DEFAULT must see a 
+            ;   previous WHEN.
+        %MUST <.case2> 
+        IFE <.stacv-.case2>,<
+          %END:                     ; Allows the preceding WHEN to branch to structure end.
+          %ENTRY:                   ; Flow from 'false' brach in previous WHEN.
+            %RFORW
+            %PUSH %END              ; Stack another structure exit jump to resolve.
+        >
+        %PUSH .case3                ; Prevent any more following WHEN clauses.
+    >
+
+    DEFINE  %ENDCASE <
+        %MUST <.case1, .case2, .case3>
+        %RFORX                      ; Handle all structure exit jumps.
+    >
+
+    DEFINE  %BREAK      (UCOND, %T, %F) <
+        %MUST <.while, .repea, .for> 
+            .temp1=.stacv           ; Remember the frame activation code.
+        %LOGIC (UCOND, %T, %F)
+      %T:
+      %F:
+            ; Edit the current loop activation frame.
+        %POP
+            .temp2=.stacv           ; Pop the loopback address.
+        %POP
+            .temp3=.stacv           ; Pop the old count of structure exit jumps.
+        %PUSH %T                    ; Insert another structure exit jump to resolve...
+            .temp3= .temp3+1        ;     ...and count it.
+        %PUSH .temp3                ; Store the new count of structure exit jumps.
+        %PUSH .temp2                ; Restore loopback address.
+        %PUSH .temp1                ; Restore loop frame activation code.
+    >
+
+    DEFINE  %CONTINUE   (UCOND, %T, %F) <
+        %MUST <.while, .repea, .for>
+            .temp1= .stacv          ; Remember the frame activation code.
+        
+        %LOGIC (UCOND, %T, %F)
+      %T:
+        %RBACK                      ; Resolve loopback address for CONTINUE.
+        %PUSH .stacv                ; Restore loopback address.
+        %PUSH .temp1                ; Restore loop frame activation code.
+      %F:
+    >
+
+        COMMENT     |
+
+                NOTES ON USE OF STRUCTURED PROGRAMMING MACROS
+        Successful use of the macro calls mainly involves closing a structure
+        properly with the corresponding END part. Assembly will fail at the 
+        first occurrence of an improperly closed structure.
+
+        The macro calls do not support 'local variables': all variables are 
+        global. Locality of reference is the responsibility of user code. In 
+        particular, variables used in FOR loops are not 'local' to the FOR, 
+        so beware.
+
+        Avoid use of register locations 1, 2, 3, 4, and 17 in comparisons or
+        as loop control. While STRUC2 saves them temporarily and restores them
+        to their original values before user code is re-entered, unexpected
+        problems may arise from their use in STRUC2 macro calls.
+
+        Conditional expressions should be enclosed in parentheses and use 
+        balanced parentheses for sub-expressions. Do not use spaces, because 
+        the macro calls are sensitive to stray spaces. So use
+                %IF ((A,EQ,B),AND,((NOT,(C,NE,D)),OR,(E,GE,F)))
+        instead of
+                %IF ((A, EQ, B), AND, ((NOT, (C, NE, D)), OR, (E, GE, F)))
+
+        Conditional expression evaluation at runtime detects several errors.
+        The first occurrence of an evaluation error will cause the error to 
+        be reported to the controlling TTY and the job to halt.
+
+        User code should avoid the use of symbols used by STRUC2, such as the 
+        symbols used in the structure stack, or other symbols defined in the 
+        %STRUC macro. Users are not prevented from using the primitive STRUC2 
+        macros, and may even find them useful for some purposes; but use of 
+        these macros should be done with care.
+ 
+        The %STRUC macro has debug feature tests to retain structure stack 
+        symbols in the listing file, to force logic evaluations, and to test 
+        the runtime stack used for conditional expression evaluations. STRUC2
+        must be re-compiled if feature test symbols are altered.
+
+        Several test files are available to study and debug STRUC2:
+            TEST1.MAC: A build of simple and nested structures using all 
+                clauses. 'END' statements can be inserted anywhere so that
+                unresolved results can be examined.
+
+            TEST2.MAC: A test of simple and nested conditional expressions
+                using all operators. The .ftrpn feature test can be used to
+                simulate an RPN runtime stack failure.
+
+            TEST3.MAC: a realistic example: output of truth tables.
+
+            TEST4.MAC: sample recognizer for an application command string.
+                file-spec;file-spec=file-spec,...,file-spec
+
+                NOTES ON COMPILING AND USING STRUCTURED PROGRAMMING MACROS
+        STRUC2 structured programming macros are assembled into a UNIVERSAL 
+        file, then SEARCHed by user code.
+
+        To assemble STRUC2.MAC, issue the following commands at the monitor:
+            .R MACRO
+            *STRUCT.MAC
+            ^C
+
+        This process will produce STRUC2.UNV, structured programming macros 
+        ready for use. STRUC2.UNV can be copied to the system UNV: ersatz 
+        device for use by all users on the system.
+
+        In the user's application, a SEARCH line should be included in MACRO
+        code, along with whatever other UNIVERSAL files are needed for the 
+        application, typically:
+                SEARCH		JOBDAT, MACTEN, UUOSYM, STRUC2
+        For more information on UNIVERSAL files and SEARCHing, refer to the 
+        MACRO Assembler Reference Manual, page 3-64 and page 3-75ff.
+
+
+                THEORY OF OPERATION: PROGRAMMING SRUCTURES
+        The 'structure stack' mentioned in this file is defined via numbered
+        MACRO-10 assembler symbols, not the runtime pushdown stack. Structure 
+        stack symbols begin with '.s' and are numbered in octal from .s0 to
+        .s7777. These symbols, and other symbols defined in the %STRUC macro, 
+        should not be preempted or altered by user code.
+
+        The structure stack keeps track of 'activations' of structures with 
+        'activation codes' so that structures can be nested without interfering 
+        with each other, and so that branch resolutions can be applied at the 
+        proper invocation level. Activation codes enforce the rules for proper 
+        use of structured programming macros.
+
+        Other values residing on the structure stack are forward and backward 
+        jumps requiring resolution; and, if BREAK is used in a loop, a count 
+        of items on the stack requiring forward resolution. The structure stack
+        uses a pointer symbol .sPtr and a limit symbol .sLim, both defined in 
+        the %STRUC macro.
+
+                THEORY OF OPERATION: CONDITIONAL EXPRESSIONS
+        Each conditional expression defined by the user is parsed into a string
+        of reverse-polish notation (RPN) symbols: logical and comparison 
+        operators, logical and memory values, and a couple of administrative 
+        symbols.
+        
+        The structured programming macro calls make sure that each RPN string
+        is eventually submitted to the 'RPN engine' for evaluation. The RPN 
+        strings ultimately evaluate to either 'true' or 'false'.
+
+        The RPN engine is not called from, but threaded into, structure code. 
+        When initialized, the RPN engine is told where to find the RPN symbol 
+        string, and the addresses it should jump to after a 'true' or 'false' 
+        result. The RPN engine can detect several error conditions.
+
+                |    ; end of comment
+
+            END

@@ -1,0 +1,18 @@
+
+The MACRO-10 files in this directory...
+; This code was used mainly to generate listing files so that STRUC2 structures
+;   could be tested during development. The Z opcodes simulate user code.
+;   An END statement can be inserted at any point to examine unresolved symbols. 
+;   No extensive tests of conditional expressions are done here, other 
+;   than to observe that RPN strings are built and that the RPN engine is 
+;   assembled and initialized.
+;
+; This code was used mainly to test the assembly of conditional expressions
+;   and to debug a running RPN engine. Z opcodes simulate user code,
+;   and execute as nop-ops. The .ftrpn feature test can be used to force a 
+;   stack failure. 
+;
+TESTIF.MAC was used to study...
+PARSE.MAC
+How to assemble:
+What to look for:

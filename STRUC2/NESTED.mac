@@ -1,0 +1,43 @@
+;
+; NESTED.MAC - test code for STRUC2 structured programming macro calls. 
+;
+        SEARCH STRUC2
+            ;LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        ;  ******************** Nested structures 5 deep
+        VAR:    block 1
+        $WHILE <(TRUE)>
+            Z 7,1(1)
+            $CASE
+                $WHEN <(TRUE)>
+                    Z 7,2(1)
+                    $IF <(TRUE)>
+                        Z 7,3(1)
+                        $FOR VAR, [1], <(TRUE)>, [100]
+                            Z 7,4(1)
+                            $REPEAT
+                                Z 7,5(0)
+                            $UNTIL <(TRUE)>
+                            Z 7,4(2)
+                        $ENDFOR
+                        Z 7,3(2)
+                    $ELSE
+                        Z 7,3(3)
+                    $ENDIF  
+                    Z 7,2(2)
+                $WHEN <(TRUE)>
+                    Z 7,2(3)
+                $WHEN <(TRUE)>
+                    Z 7,2(4)
+                $DEFAULT
+                    Z 7,2(5)
+            $ENDCASE
+            Z 7,1(2)
+        $ENDWHILE        
+
+        reset
+        exit
+        END

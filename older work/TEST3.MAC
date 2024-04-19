@@ -1,0 +1,12 @@
+;
+; TEST3.MAC - A realistic example of an application built using the STRUC2 
+;   structured programming macro calls. 
+;
+;  by C. Miracle, Louisville KY, June 2010
+;          cbmira01@louisville.edu
+;
+; This code implements a simple display of truth tables to the TTY.
+;
+        SEARCH STRUC2
+
+        %STRUC

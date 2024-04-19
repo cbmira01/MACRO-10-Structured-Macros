@@ -1,0 +1,19 @@
+;
+; IFELSE.MAC - test code for STRUC2 structured programming macro calls. 
+;
+        SEARCH STRUC2
+            ;LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        ;  ******************** Simple IF-ELSE
+        $IF <(TRUE)>
+            Z 2,1(0)
+        $ELSE
+            Z 2,2(0)
+        $ENDIF
+
+        reset
+        exit
+        END

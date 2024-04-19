@@ -1,0 +1,20 @@
+del *.rel
+del *.lst
+del *.unv
+
+r macro
+,struc2=struc2
+^C
+
+
+r macro
+,if=if
+,ifelse=ifelse
+,while=while
+,repeat=repeat
+,for=for
+,case=case
+,nested=nested
+,logic=logic
+,testif=testif
+^C

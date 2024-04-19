@@ -1,0 +1,16 @@
+;
+; TEST4.MAC - An example of a recognizer for an application command string, 
+;   using the STRUC2 structured programming macro calls. 
+;
+;  by C. Miracle, Louisville KY, June 2010
+;          cbmira01@louisville.edu
+;
+; This code will implement a recognizer for the string
+;
+;           file-spec;file-spec=file-spec,...,file-spec
+;
+;   where file-spec is a valid TOPS-10 file specification. 
+;
+        SEARCH STRUC2
+
+        %STRUC

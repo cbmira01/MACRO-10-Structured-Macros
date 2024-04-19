@@ -1,0 +1,65 @@
+;
+; PARSE.MAC - test code for STRUC2 structured programming macro calls. 
+;
+; This code is a simplified form of the $PARSE macro, used to demo pseudo-ops
+;   and proper macro calls in MACRO-10.  
+;
+                ; LALL
+
+    ; Fully parse a conditional expression into an RPN symbol string.
+    DEFINE $PARSE (T1,T2,T3) <
+        .plvl=.plvl+1               ; Track parse level for end-of-string symbol.
+
+        IFIDN <T2><AND>,<
+            $PARSE T1
+            $PARSE T3
+            ASCII "and-"
+        >
+        IFIDN <T2><OR>,<
+            $PARSE T1
+            $PARSE T3
+            ASCII "or--"
+        >
+
+        IFB <T3>,<
+            IFIDN <T1><NOT>,<
+                ASCII "----"
+                $PARSE T2
+                ASCII "not-"
+            >
+            IFB <T2>,<
+                .memrf=.true
+                IFIDN <T1><TRUE>,<
+                    ASCII "true"
+                    .memrf=.false
+                >
+                IFIDN <T1><FALSE>,<
+                    ASCII "fals"
+                    .memrf=.false
+                >
+                IFN .memrf,<
+                    exp T1
+                >
+            >
+        >
+
+        .plvl=.plvl-1
+        IFE <.plvl>,<
+            ASCII "stop"
+        >
+    >
+
+    A:  exp 100
+    B:  exp 200
+    .plvl=0
+    .true=1
+    .false=0
+
+    $PARSE (A,AND,B)
+    $PARSE (NOT,([1],OR,B))
+    $PARSE (TRUE,OR,FALSE)
+    $PARSE (A,AND,(NOT,([2],OR,A)))
+
+    END
+
+

@@ -1,0 +1,27 @@
+;
+; WHILE.MAC - test code for STRUC2 structured programming macro calls. 
+;
+;
+        SEARCH STRUC2
+            ;LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        ;  ******************** Simple WHILE
+        $WHILE <(TRUE)>
+            Z 3,1(0)
+        $ENDWHILE
+
+        ;  ******************** WHILE with BREAK and CONTINUE
+        $WHILE <(TRUE)>
+            Z 10,1(0)
+            $BREAK <(TRUE)>
+            Z 10,2(0)
+            $CONTINUE <(TRUE)>
+            Z 10,3(0)
+        $ENDWHILE
+
+        reset
+        exit
+        END

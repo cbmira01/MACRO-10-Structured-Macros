@@ -1,0 +1,12 @@
+
+r macro
+,if=if
+,ifelse=ifelse
+,while=while
+,repeat=repeat
+,for=for
+,case=case
+,nested=nested
+,logic=logic
+,testif=testif
+^C

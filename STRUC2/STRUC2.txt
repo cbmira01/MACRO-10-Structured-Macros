@@ -1,0 +1,293 @@
+
+    MACRO-10 STRUCTURED MACROS, "STRUC2"
+
+    ABSTRACT
+
+        STRUC2 was developed to allow a programmer an easier way to express 
+        code in DECsystem-10 macro assembler. STRUC2 was designed to have as 
+        little impact as possible on other code. STRUC2 does not use the user's 
+        stack. When STRUC2 requires working registers, it protects user register 
+        values. STRUC2 was inspired by Robert P. Nix's 1978 contribution to the
+        DECUS Program Library, "DECsystem-10 Structured Prgramming Macros".
+
+    BUILD AND TEST
+
+    THE MACRO CALLS
+
+        $STRUC 
+
+            Use $STRUC before any use of structured programming macro calls. 
+            $STRUC prepares the assembly workspace and supplies code for 
+            conditional expression evaluation.
+
+        $IF <(condition)>
+          {body}
+        $ELSE
+          {body}
+        $ENDIF
+
+        $IF <(condition)>
+          {body}
+        $ENDIF
+
+            $IF-$ENDIF and $IF-$ELSE-$ENDIF provides for execution of a code 
+            body, or an alternate code body, based on a condition.
+
+        $WHILE <(condition)>
+          {body}
+        $ENDWHILE
+
+            $WHILE-$ENDWHILE loops over a code body while condition is true. 
+            Set condition TRUE for an infinite loop. 
+            Any number of $BREAKs and $CONTINUEs can be used inside the loop.
+
+        $REPEAT
+          {body}
+        $UNTIL <(condition)>
+
+            $REPEAT-$UNTIL loops over a code body until condition is true. 
+            Set condition FALSE for an infinite loop. 
+            Any number of $BREAKs and $CONTINUEs can be used inside the loop.
+
+       $FOR loop_variable, start, <(condition)>, increment
+           {body}
+       $ENDFOR
+
+            $FOR-$ENDFOR loops over a code body. 
+            The loop variable must be supplied; it is not protected in the loop.
+            Any number of $BREAKs and $CONTINUEs can be used inside the loop.
+
+        $CASE
+            {body}
+           $WHEN <(condition)>
+                {body}
+           $WHEN <(condition)> 
+                {body}
+           [...additional $WHEN clauses allowed...]
+           $DEFAULT
+                {body}
+        $ENDCASE
+
+            $CASE-$ENDCASE provides for multi-way execution of code. 
+            Code immediately following $CASE is always executed. 
+            When a $WHEN condition evaluates true, its code body is executed, 
+            then a branch is taken to $ENDCASE. 
+            Any number of $WHEN clauses can be defined. 
+            The $DEFAULT clause is optional; but if defined, may only be defined 
+            once as the final clause in the structure, and must follow at least 
+            one $WHEN clause. 
+            The $DEFAULT clause will execute if no other $WHEN conditions match. 
+
+        $BREAK <(condition)>
+        $CONTINUE <(condition)>
+
+            $BREAK and $CONTINUE are legal only in the scope of $WHILE, $REPEAT 
+            or $FOR loops. On TRUE, $BREAK branches to the exit point of the loop,
+            while $CONTINUE branches to the loopback point of the loop. 
+            $BREAK and $CONTINUE are optional and can be used multiple times in 
+            the scope of a loop structure.
+
+    CONDITIONAL EXPRESSIONS 
+
+        A structure condition expression 'c' which ultimately resolves to 
+            TRUE or FALSE may be built as follows:
+
+            c ::= (TRUE) | (FALSE) | (A,compareOp,B) | (NOT,(c1)) |
+                           ((c1),logicalOp,(c2))
+
+            compareOp ::=  EQ  |  NE  |  GT   |  LT   |  GE  |  LE
+
+            logicalOp ::= AND  |  OR  |  XOR  |  EQV  |  IMPL  
+
+            A, B ::= memory or literal references 
+
+            c1, c2 ::= structure condition expressions
+
+        The compareOp operators make full-word comparisons of their arguments.
+        The logicalOp operators are used to finally combine logical results of 
+        compareOps, and will evaluate as in the following table:
+           
+                c1      c2      AND     OR      XOR     EQV     IMPL     NOT(c2)
+                T       T       T       T       F       T        T        F 
+                T       F       F       T       T       F        F        T 
+                F       T       F       T       T       F        T  
+                F       F       F       F       F       T        T  
+
+        A conditional expression should be enclosed in left and right angle 
+        brackets, as demonstrated in the macro calls section above. 
+
+        Keep in mind that the STRUC2 macros do not *enforce* well-formedness 
+        of conditional expressions, but should provide good results if the
+        pattern above is followed. Look at the included unit tests for good 
+        examples.
+
+    PROGRAMMING WITH STRUC2
+
+        Successful use of these macro calls mainly involves closing a structure
+        properly with its corresponding end part. Assembly will fail at the 
+        first occurrence of an improperly closed structure. 
+
+        STRUC2 macro calls do not support 'local variables': all variables are 
+        global. Locality of reference is the responsibility of user code. 
+
+        Conditional expressions should be enclosed in parentheses, use 
+        balanced parentheses for sub-expressions, and be finally enclosed in 
+        left and right angle brackets. Do not use spaces, because the macro 
+        calls are sensitive to stray spaces. So use (for example)
+                $IF <(A,EQ,B)>    instead of   $IF <(A, EQ, B)>
+
+        User code should avoid the use of symbols used by STRUC2, such as the 
+        symbols used in the structure stack or other symbols defined in the 
+        $STRUC macro. Users are not prevented from calling the primitive macros 
+        that implement structure stack operations, but their use should be done 
+        with care. 
+
+        Since the RPN engine uses certain general registers when evaluating 
+        conditional expressions, memory references to general registers should be 
+        dereferenced to the location $$SAVR. For example, a conditional expression
+        to compare registers 3 and 5 can be written as:
+                
+                $IF <($$SAVR+3,EQ,$$SAVR+5)>
+                    {body}
+                $ENDIF
+
+    BUILDING AND USING STRUC2
+
+        STRUC2 structured programming macros are assembled into a UNIVERSAL 
+        file, then SEARCHed by user code. To assemble STRUC2.MAC, issue the 
+        following commands at the monitor:
+            .R MACRO
+            *STRUCT.MAC
+            ^C
+
+        This will produce STRUC2.UNV, structured programming macros ready for 
+        use. STRUC2.UNV can be copied to the system UNV: ersatz device for use 
+        by all users on the system.
+
+        In the user's application, a SEARCH line should be included in MACRO
+        code, along with whatever other UNIVERSAL files are needed for the 
+        application, typically:
+
+                SEARCH      JOBDAT, MACTEN, UUOSYM, STRUC2
+
+        For more information on UNIVERSAL files and SEARCHing, refer to 
+        [DMARM] page 3-64 and page 3-75ff.
+
+        The $STRUC macro definition has debug feature tests to retain structure 
+        stack symbols in the listing file, to force logic evaluations, and to 
+        test the conditional expression evaluation stack. STRUC2 must be 
+        re-compiled if feature test symbols are altered.
+
+        Several files are provided to study and debug STRUC2 macro calls. In the
+        TEST subdirectory, there are MACRO-10 files to test simple and nested 
+        programming structures, and a file LOGIC.MAC to test simple and nested 
+        conditional expressions using all operators. In addition, a file TRUTH.MAC
+        implements a realistic example program to output truth tables, and 
+        STRING.MAC implements a recognizer for a filespec string.
+
+    THEORY OF OPERATION
+
+        At assembly time, the STRUC2 macros manipulate a 'structure stack' which
+        is composed of numbered MACRO-10 assembler symbols; this is distinct from
+        the runtime pushdown stack. Structure stack symbols begin on a base 
+        symbol '.s' and are numbered in octal from .s0 to .s7777. 
+
+        The structure stack keeps track of 'activations' of structures with 
+        'activation codes' so that structures can be nested without interfering 
+        with each other, and so that branch resolutions can be applied at the 
+        proper invocation level. Activation codes enforce the rules for proper 
+        use of structured programming macros.
+
+        Other values residing on the structure stack are forward and backward 
+        jumps requiring resolution. If a BREAK is used in a loop, a count of     
+        branches requiring forward resolution is pushed onto the structure stack. 
+        The symbols .sPtr and .sLim, both defined in the $STRUC macro, are used
+        to record the size and current push-level of the structure stack.
+
+        Conditional expressions defined by the user are parsed into a string of 
+        reverse-polish notation (RPN) symbols: logical and comparison operators, 
+        truth and memory values, and a couple of administrative symbols.
+        
+        STRUC2 macro calls submit these RPN strings to an 'RPN engine' for 
+        evaluation to an overall 'true' or 'false' result. The RPN engine is 
+        threaded into structure code. When initialized, the RPN engine is told 
+        where to find the RPN string and the addresses it should jump to after 
+        evaluating the logical result. The RPN engine can detect a couple of 
+        simple runtime error conditions.
+
+    DEVELOPMENT NOTES, WHAT'S NEXT
+
+        Here is an example of a $FOR loop, a count over a code body from 
+        I = 0 to 100 stepping by 10, using MACRO-10 literals:
+
+                I:  BLOCK 1
+                $FOR I, [0], <(LOOPV,LE,[100])>, [10]
+                        {body}
+                $ENDFOR
+
+        A nested loop to initialize each cell of a 100x100 array with the 
+        product of its indices can be implemented as:
+
+                PRODUCT=1
+                INDEX=2
+                I:      BLOCK 1
+                J:      BLOCK 1
+                BASE:   BLOCK 100
+                $FOR I, [0], <(I,LE,[9])>, [1]
+                    $FOR J, [0], <(J,LE,[9])>, [1]
+                        move    PRODUCT, I
+                        imul    PRODUCT, J
+                        move    INDEX,I
+                        imul    INDEX,[10]
+                        add     INDEX,J
+                        movem   PRODUCT,BASE(INDEX)
+                    $ENDFOR  ; end J
+                $ENDFOR   ; end I
+
+        It might be interesting (but maybe not worthwhile) to add certain 
+        features to make STRUC2 more like a true structured programming language
+        such as PASCAL or C. Expression evaluation could be built along the 
+        lines of the conditional expression parser and RPN engine; local 
+        variables could be pushed onto the structure stack at activation; and 
+        procedure calls could made recursive if a runtime activation frame was 
+        maintained. 
+
+    CREDITS AND REFERENCES
+ 
+        This implementation of structured programming macros was inspired by the 
+        original STRUCT macros written by Robert P. Nix, 21 November 1978. His 
+        original code can be found as item 320 in the DECUS-10 Program Library at:
+            dcus:[43,50500], http://pdp-10.trailing-edge.com/decuslib10-08/index.html 
+        Thank you, Robert!
+
+        The RPN evaluator for conditional expressions is an implementation of the
+        "Postfix Algorithm" as described in: 
+            [WIKI] Wikipedia contributors. "Reverse Polish notation." Wikipedia, 
+            The Free Encyclopedia. Wikipedia, The Free Encyclopedia, 9 Jun. 2011. 
+
+        Books and manuals consulted for this project include:
+            [DMARM] "DECsystem-10 Macro Assembler Reference Manual", DEC part 
+                number AA-C780C-TB. 1967, 1978 Digital Equipment Corporation.
+
+            [DPRM] "DECsystem-10 Processor Reference Manual", DEC part number 
+                AA-H391A-TK. 1968, 1971, 1974, 1978, 1982 Digital Equipment 
+                Corporation.
+
+            [Gorin] Gorin, R. E. "Introduction to DECSYSTEM–20 Assembly Language 
+                Programming". 1995, 1999, 2000 Ralph E. Gorin.
+
+        Recognition and thanks are due Bob Supnik and his many contributors for 
+        the historical computer simulator program SIMH, copyright (c) 2001-2008, 
+        Robert M Supnik.
+            http://simh.trailing-edge.com/ 
+
+        Recognition and thanks are due Al Kossow and his many contributors for 
+        the BitSavers trove of historical computer manuals located at 
+            http://bitsavers.trailing-edge.com/
+
+        Recognition and thanks are due Tim Shoppa and his many contributors for 
+        the extensive archive of PDP-10 software located at 
+            http://pdp-10.trailing-edge.com/
+
+        I may be contacted by email at cbmira01@gmail.com. I invite comments, 
+        ideas and bug fixes.

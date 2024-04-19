@@ -1,0 +1,26 @@
+;
+; CASE.MAC - test code for STRUC2 structured programming macro calls. 
+;
+;
+        SEARCH STRUC2
+            ; LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        ;  ******************** Simple CASE
+        $CASE
+            Z 6,1(0)
+            $WHEN <(TRUE)>
+                Z 6,2(0)
+            $WHEN <(TRUE)>
+                Z 6,3(0)
+            $WHEN <(TRUE)>
+                Z 6,4(0)
+            $DEFAULT
+                Z 6,5(0)
+        $ENDCASE
+
+        reset
+        exit
+        END

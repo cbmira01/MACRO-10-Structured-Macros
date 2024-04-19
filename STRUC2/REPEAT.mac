@@ -1,0 +1,26 @@
+;
+; REPEAT.MAC - test code for STRUC2 structured programming macro calls. 
+;
+        SEARCH STRUC2
+            ;LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        ;  ******************** Simple REPEAT
+        $REPEAT
+            Z 4,1(0)
+        $UNTIL <(TRUE)>
+
+        ;  ******************** REPEAT with BREAK and CONTINUE
+        $REPEAT
+            Z 11,1(0)
+            $CONTINUE <(TRUE)>
+            Z 11,2(0)
+            $BREAK <(TRUE)>
+            Z 11,3(0)
+        $UNTIL <(TRUE)>
+
+        reset
+        exit
+        END

@@ -1,0 +1,18 @@
+;
+; FOR.MAC - test code for STRUC2 structured programming macro calls. 
+;
+        SEARCH STRUC2
+            ;LALL
+        $STRUC
+
+        Z 0,0(0)
+
+        VAR:    block 1
+        ;  ******************** Simple FOR
+        $FOR VAR, [1], <(TRUE)>, [100]
+            Z 5,1(0)
+        $ENDFOR
+
+        reset
+        exit
+        END
