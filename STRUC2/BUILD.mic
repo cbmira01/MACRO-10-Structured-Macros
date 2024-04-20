@@ -1,13 +1,16 @@
-del *.rel
-del *.lst
-del *.unv
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+;   Build universal table for structured macros
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-r macro
+.r macro
 ,struc2=struc2
 ^C
 
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
+;   Build the tests
+; = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = = =
 
-r macro
+.r macro
 ,if=if
 ,ifelse=ifelse
 ,while=while
