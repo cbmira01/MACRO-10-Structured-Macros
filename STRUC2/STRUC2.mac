@@ -1,29 +1,26 @@
 
                              COMMENT |
 
-    STRUC2 -- A SET OF STRUCTURED PROGRAMMING MACROS FOR DECSYSTEM-10 ASSEMBLER.
+    MACRO-10 Structured Macros, aka "STRUC2"
             by Calvin Miracle, Louisville KY
 
-        STRUC2 was developed to allow a programmer working in DecSystem-10 macro
-        assembler an easier way to express code. STRUC2 was designed to have as 
-        little impact as possible on user code. STRUC2 does not use the user's 
-        stack. When STRUC2 requires working registers, it protects user register 
-        values.
+        STRUC2 was developed to allow a programmer an easier way to express 
+        code in DECsystem-10 macro assembler. STRUC2 was designed to have as 
+        little impact as possible on other code. 
 
-        This implementation of structured programming macros was inspired by the 
-        original STRUCT macros written by Robert P. Nix, 21 November 1978. His 
-        original code can be found in the DECUS-10 library 
+        STRUC2 was inspired by Robert P. Nix's 1978 contribution to the
+        DECUS Program Library, "DECsystem-10 Structured Prgramming Macros".
+        His original code can be found in:
         dcus:[43,50500], http://pdp-10.trailing-edge.com/decuslib10-08/index.html 
-        Thank you, Robert!
 
-        See the accompanying file STRUC2.TXT for more information and credits.
+        Thank you, Robert!
 
                              | ; end comment
 
     UNIVERSAL STRUC2 
 
-    ; Set a given stack location to a given value. Symbolic 'base' will be '.s' 
-    ;   for the STRUC2 macros.
+    ; Set a given stack location to a given value. 
+    ; Symbolic 'base' will be '.s' for the STRUC2 macros.
     DEFINE  $SET (BASE, LEVEL, VALUE) <
         BASE'LEVEL=VALUE
     >
@@ -40,9 +37,9 @@
         SYMBOL=BASE'LEVEL
     >
 
-    ; Pop the structure stack: set a given symbol to the value of top-of-stack,
-    ;   then purge/abandon the stack location. A pop on an empty stack causes 
-    ;   assembly to stop.
+    ; Set a given symbol to the value of top-of-stack,
+    ;   then purge/abandon the stack location. 
+    ; A pop on an empty stack causes assembly to stop.
     DEFINE  $POP (SYMBOL)<
         IFL <.sPtr>,<
             PRINTX STRUC2 ERROR: POP attempted on an empty stack.
@@ -59,8 +56,8 @@
         jrst .jback
     >
 
-    ; Push a given value onto the structure stack. A push onto a full stack  
-    ;   causes assembly to stop.
+    ; Push a given value onto the structure stack. 
+    ; A push onto a full stack causes assembly to stop.
     DEFINE  $PUSH (VALUE) <
         IFG <.sPtr-.sLim>,<
             PRINTX STRUC2 ERROR: PUSH attempted on a full stack.
@@ -70,8 +67,8 @@
         $SET (.s,\.sPtr,VALUE)
     >
 
-    ; Test a given symbol for one of the values in LIST. If no match is found,
-    ;   then set a flag to '.false' logic value.
+    ; A given symbol must be one of the values in a list. 
+    ; A flag is set true or false on the result of the test.
     DEFINE  $MUSTBE (SYMBOL, FLAG, LIST) <
         FLAG=.false
         IRP LIST,<
@@ -79,9 +76,9 @@
         >
     >
 
-    ; Resolve a jump forward to a following structure part. The jump location is
-    ;   at the top of stack. For insight into how this macro works, 
-    ;   refer to [DMARM] page 3-46.
+    ; Resolve a jump forward to a following structure part. 
+    ; The jump location is at the top of stack. 
+    ; For insight into how this macro works, refer to [DMARM] page 3-46.
     DEFINE  $RFORW <
         .here=.                     ; Record the current location in the assembly.
         $POP .jforw                 ; Get the source location of a jump.
@@ -90,8 +87,8 @@
         .ORG                        ; Resume the original line of assembly.
     >
 
-    ; Resolve a number of jumps forward to a following structure part. The 
-    ;   number of jumps to resolve is at the top of stack.
+    ; Resolve a number of jumps forward to a following structure part. 
+    ; The number of jumps to resolve is at the top of stack.
     DEFINE  $RFORX <
         $POP .njump
         REPEAT <.njump>,<

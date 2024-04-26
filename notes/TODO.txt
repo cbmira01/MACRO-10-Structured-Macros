@@ -1,0 +1,16 @@
+
+
+- Tests should produce console output, and should
+be realistic enough to serve as model programs. Stop using
+NOPs.
+
+- A minimal output library should be incorporated to
+allow test results to be seen on the console.
+
+- The RPN engine should be delivered not as a macro call,
+but rather as a linkable REL. This will keep engine symbols
+out of user code.
+
+- The RPN engine should be a subroutine call, not threaded.
+
+- 

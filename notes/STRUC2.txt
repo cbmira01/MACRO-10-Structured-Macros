@@ -12,6 +12,8 @@
 
     BUILD AND TEST
 
+        to do
+
     THE MACRO CALLS
 
         $STRUC 
@@ -107,7 +109,7 @@
         The logicalOp operators are used to finally combine logical results of 
         compareOps, and will evaluate as in the following table:
            
-                c1      c2      AND     OR      XOR     EQV     IMPL     NOT(c2)
+                c1      c2      AND     OR      XOR     EQV     IMPL     NOT(c1)
                 T       T       T       T       F       T        T        F 
                 T       F       F       T       T       F        F        T 
                 F       T       F       T       T       F        T  
@@ -133,7 +135,8 @@
         Conditional expressions should be enclosed in parentheses, use 
         balanced parentheses for sub-expressions, and be finally enclosed in 
         left and right angle brackets. Do not use spaces, because the macro 
-        calls are sensitive to stray spaces. So use (for example)
+        calls are sensitive to stray spaces. So use (for example):
+
                 $IF <(A,EQ,B)>    instead of   $IF <(A, EQ, B)>
 
         User code should avoid the use of symbols used by STRUC2, such as the 
@@ -156,6 +159,7 @@
         STRUC2 structured programming macros are assembled into a UNIVERSAL 
         file, then SEARCHed by user code. To assemble STRUC2.MAC, issue the 
         following commands at the monitor:
+
             .R MACRO
             *STRUCT.MAC
             ^C
